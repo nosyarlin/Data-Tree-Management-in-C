@@ -250,6 +250,54 @@ int parse_graph_file(char *file_name, node_t *node) {
  * of each node.
  */
 int parse_node_parents(node_t *nodes, int num_nodes) {
+  int **parent_list = (int**) malloc(MAX_NODES * sizeof(int *));
+  int k, num_parents;
+
+  // initialize parent list
+  for (int i = 0; i < num_nodes; ++i)
+  {
+    // Set all entries of parent list to -1
+    parent_list[i] = (int*) malloc(MAX_PARENTS * sizeof(int));
+    for (int j = 0; j < num_nodes; ++j)
+    {
+      parent_list[i][j] = -1;
+    }
+  }
+
+  // save parents of nodes to parent list
+  for (int i = 0; i < num_nodes; ++i)
+  {
+    for (int j = 0; j < nodes->num_children; ++j)
+    {
+      // find next empty slot to write in parent_list[child][k]
+      k = 0;
+      while (parent_list[nodes->children[j]][k] != -1) {
+        k++;
+      }
+      // insert parent's id in parent_list
+      parent_list[nodes->children[j]][k] = nodes->id;
+    }
+    // move forward in list of nodes
+    nodes++;
+  }
+
+  // save parents of nodes to the nodes themselves
+  for (int i = num_nodes-1; i > -1; --i)
+  {
+
+    // save individal node parent count
+    printf("id: %d\n", i);
+    k = 0;
+    while (parent_list[i][k] != -1) {
+      nodes->parents[k] = parent_list[i][k];
+      printf("%d\n", parent_list[i][k]);
+      k++;
+    }
+    // save individal node's parents
+    nodes->num_parents = k;
+    // move backwards in list of nodes
+    nodes--;
+  }
 }
 
 /**
@@ -279,21 +327,39 @@ int main(int argc, char *argv[]) {
   node_t nodes[MAX_NODES];
   int num_nodes;
   int num_nodes_finished;
+  char *filename;
 
   /* Check command line arguments */
-
-  /* INSERT CODE */
+  if (argc > 1) {
+    filename = argv[1];
+  }
 
   /* Parse graph file */
   fprintf(stderr, "Parsing graph file...\n");
-  /* INSERT CODE - invocation to parse_graph_files */
-
-  
-  
+  /* invocation to parse_graph_files */
+  num_nodes = parse_graph_file(filename, nodes);
+  if (num_nodes < 0) {
+    return EXIT_FAILURE;
+  }
   
   /* Parse nodes for parents */
   fprintf(stderr, "Parsing node parents...\n");
-  /* INSERT CODE - invocation to parse_node_parents */
+  /* invocation to parse_node_parents */
+  parse_node_parents(nodes, num_nodes);
+
+  node_t *tempNodes;
+  tempNodes = nodes;
+
+  for (int i = 0; i < num_nodes; ++i)
+  {
+    printf("id %d: \n", tempNodes->id);
+    for (int j = 0; j < tempNodes->num_parents; ++j)
+    {
+      printf("%d ", tempNodes->parents[j]);
+    }
+    printf("\n");
+    tempNodes++;
+  }
 
   /* Print process tree */
   fprintf(stderr, "\nProcess tree:\n");
