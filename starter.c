@@ -4,6 +4,7 @@
 #include<stdlib.h>
 #include<errno.h>
 #include<string.h>
+
 #include<ctype.h>
 
 #define INELIGIBLE 0
@@ -282,15 +283,14 @@ int parse_node_parents(node_t *nodes, int num_nodes) {
   }
 
   // save parents of nodes to the nodes themselves
+  nodes--;
   for (int i = num_nodes-1; i > -1; --i)
   {
 
     // save individal node parent count
-    printf("id: %d\n", i);
     k = 0;
     while (parent_list[i][k] != -1) {
       nodes->parents[k] = parent_list[i][k];
-      printf("%d\n", parent_list[i][k]);
       k++;
     }
     // save individal node's parents
@@ -318,6 +318,23 @@ int parse_node_status(node_t *nodes, int num_nodes) {
  * Returns 0 if printed successfully.
  */
 int print_process_tree(node_t *nodes, int num_nodes) {
+
+  for (int i = 0; i < num_nodes; ++i)
+  {
+    printf("process %d: \nparents: ", nodes->id);
+    for (int j = 0; j < nodes->num_parents; ++j)
+    {
+      printf("%d, ", nodes->parents[j]); 
+    }
+    printf("\nchildren: ");
+    for (int j = 0; j < nodes->num_children; ++j)
+    {
+      printf("%d, ", nodes->children[j]); 
+    }
+    printf("\n\n");
+    nodes++;
+  }
+  return 0;
 }
 
 /**
@@ -336,7 +353,6 @@ int main(int argc, char *argv[]) {
 
   /* Parse graph file */
   fprintf(stderr, "Parsing graph file...\n");
-  /* invocation to parse_graph_files */
   num_nodes = parse_graph_file(filename, nodes);
   if (num_nodes < 0) {
     return EXIT_FAILURE;
@@ -344,27 +360,25 @@ int main(int argc, char *argv[]) {
   
   /* Parse nodes for parents */
   fprintf(stderr, "Parsing node parents...\n");
-  /* invocation to parse_node_parents */
   parse_node_parents(nodes, num_nodes);
 
-  node_t *tempNodes;
-  tempNodes = nodes;
+  // node_t *tempNodes;
+  // tempNodes = nodes;
 
-  for (int i = 0; i < num_nodes; ++i)
-  {
-    printf("id %d: \n", tempNodes->id);
-    for (int j = 0; j < tempNodes->num_parents; ++j)
-    {
-      printf("%d ", tempNodes->parents[j]);
-    }
-    printf("\n");
-    tempNodes++;
-  }
+  // for (int i = 0; i < num_nodes; ++i)
+  // {
+  //   printf("id %d: \n", tempNodes->id);
+  //   for (int j = 0; j < tempNodes->num_parents; ++j)
+  //   {
+  //     printf("%d ", tempNodes->parents[j]);
+  //   }
+  //   printf("\n");
+  //   tempNodes++;
+  // }
 
   /* Print process tree */
   fprintf(stderr, "\nProcess tree:\n");
-
-  /* INSERT CODE  - print the process tree */
+  print_process_tree(nodes, num_nodes);
 
   /* Run processes */
   fprintf(stderr, "Running processes...\n");
