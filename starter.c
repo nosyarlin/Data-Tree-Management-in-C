@@ -275,6 +275,11 @@ int parse_node_parents(node_t *nodes, int num_nodes) {
       while (parent_list[nodes->children[j]][k] != -1) {
         k++;
       }
+      // return error if exceeded the maximum number of parents per node
+      if(k>10){
+        perror("Exceeded maximum number of parents per node");
+        return -1;
+      }
       // insert parent's id in parent_list
       parent_list[nodes->children[j]][k] = nodes->id;
     }
@@ -286,11 +291,15 @@ int parse_node_parents(node_t *nodes, int num_nodes) {
   nodes--;
   for (int i = num_nodes-1; i > -1; --i)
   {
-
     // save individal node parent count
     k = 0;
     while (parent_list[i][k] != -1) {
       nodes->parents[k] = parent_list[i][k];
+      if(nodes->parents[k] == nodes->id){
+        // return error if node is inside the list 
+        perror("Node cannot be a parent of itself");
+        return -1;
+      }
       k++;
     }
     // save individal node's parents
