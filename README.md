@@ -3,7 +3,7 @@
 ## Programming Assignment 1
 **Author :** Rayson Lim Jun Kai  | Kimberlyn Loh Cheng Lin <br />
 **ID     :** 1002026 | 1002221 <br />
-**Date   :** dd/mm/yyyy  
+**Date   :** 28/02/2018  
 
 ## Purpose of the program
 
