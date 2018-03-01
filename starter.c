@@ -17,6 +17,12 @@
 #define MAX_CHILDREN 10
 #define MAX_NODES 50
 
+int **children;
+int *tempNum_children;
+int *sortedList;
+int *visited;
+int count = 0;
+
 typedef struct node {
   int id;
   char prog[MAX_LENGTH];
@@ -170,6 +176,7 @@ int parse_input_line(char *line, int id, node_t *node) {
       if (c < MAX_CHILDREN) {
         if (atoi(child_list[c]) != id) {
           node->children[c] = atoi(child_list[c]);
+          children[node->id][c] = atoi(child_list[c]);
           fprintf(stderr, "... child[%d] = %d\n", c, node->children[c]);
           node->num_children++;
         } else {
@@ -181,8 +188,13 @@ int parse_input_line(char *line, int id, node_t *node) {
         return -1;
       }
     }
+    tempNum_children[node->id] = node->num_children;
   }
+
   fprintf(stderr, "... num_children = %d\n", node->num_children);
+
+  /* Set node status */
+  node->status = 0;
 
   return 0;
 }
@@ -307,6 +319,15 @@ int parse_node_parents(node_t *nodes, int num_nodes) {
     // move backwards in list of nodes
     nodes--;
   }
+
+  // free parent_list
+  for (int i = 0; i < num_nodes; ++i)
+  {
+      free(parent_list[i]);
+  }
+  free(parent_list);
+
+  return 0;
 }
 
 /**
@@ -319,6 +340,57 @@ int parse_node_parents(node_t *nodes, int num_nodes) {
  * an error.
  */
 int parse_node_status(node_t *nodes, int num_nodes) {
+    int *statuses = malloc(num_nodes * sizeof(int));
+    int tempStatus;
+    int num_finished = 0;
+
+    // Saving all current statuses of nodes
+    for (int i = 0; i < num_nodes; ++i)
+    {
+        // Check if node is done
+        if (nodes->status == 3)
+        {
+            num_finished++;
+        }
+        // Saving statuses
+        statuses[i] = nodes->status;
+        nodes++;        
+    } 
+
+    // Check if nodes' statuses changed
+    nodes--;
+    for (int i = 0; i < num_nodes; ++i)
+    {
+        // Only change status if the node was ineligible
+        if (nodes->status == 0)
+        {
+            // If no parents, you are ready
+            if (nodes->num_parents == 0)
+            {
+                statuses[i] = 1;
+                nodes->status = 1;
+            }
+            // Else check if parents are done
+            else
+            {
+                tempStatus = 1;
+                // Runs through all parents to look for unfinished parents
+                for (int j = 0; j < nodes->num_parents; ++j)
+                {   
+                    if (statuses[nodes->parents[j]] != 3)
+                    {
+                        tempStatus = 0;
+                    }
+                }
+                // Setting new status
+                nodes->status = tempStatus;
+                statuses[i] = tempStatus;
+            }
+        }
+        nodes--;
+    }
+    free(statuses);
+    return num_finished;
 }
 
 /**
@@ -327,7 +399,7 @@ int parse_node_status(node_t *nodes, int num_nodes) {
  * Returns 0 if printed successfully.
  */
 int print_process_tree(node_t *nodes, int num_nodes) {
-
+  char *stat = malloc(10 * sizeof(char));
   for (int i = 0; i < num_nodes; ++i)
   {
     printf("process %d: \nparents: ", nodes->id);
@@ -340,10 +412,55 @@ int print_process_tree(node_t *nodes, int num_nodes) {
     {
       printf("%d, ", nodes->children[j]); 
     }
+    printf("\ncommand: %s", nodes->prog);
+    printf("\ninput: %s", nodes->input);
+    printf("\noutput: %s", nodes->output);
+
+    switch (nodes->status){
+        case 0:
+            stat = "INELIGIBLE";
+            break;
+        case 1:
+            stat = "READY";
+            break;
+        case 2:
+            stat = "RUNNING";
+            break;
+        case 3:
+            stat = "FINISHED";
+            break;
+    }
+
+    printf("\nstatus: %s", stat);
     printf("\n\n");
     nodes++;
   }
   return 0;
+}
+
+int topoSort(int current_node) {
+    for (int i = 0; i < tempNum_children[current_node]; ++i)
+    {
+        if (visited[children[current_node][i]] == 0)
+        {
+            topoSort(children[current_node][i]);
+        }
+    }
+    sortedList[count] = current_node;
+    visited[current_node] = 1;
+    count++;
+}
+
+void cleanUP() {
+    
+    for (int j = 0; j < MAX_CHILDREN; ++j)
+    {
+        free(children[j]);
+    }
+    free(children);
+    free(tempNum_children);
+    free(sortedList);
+    free(visited);
 }
 
 /**
@@ -354,6 +471,7 @@ int main(int argc, char *argv[]) {
   int num_nodes;
   int num_nodes_finished;
   char *filename;
+  sortedList = malloc(MAX_NODES * sizeof(int));
 
   /* Check command line arguments */
   if (argc > 1) {
@@ -362,8 +480,18 @@ int main(int argc, char *argv[]) {
 
   /* Parse graph file */
   fprintf(stderr, "Parsing graph file...\n");
+  // Prepare global children array
+  children = malloc(MAX_NODES * sizeof(int*));
+  visited = malloc(MAX_NODES * sizeof(int*));
+  tempNum_children = malloc(MAX_NODES * sizeof(int));
+  for (int i = 0; i < MAX_CHILDREN; ++i)
+  {
+      children[i] = malloc(MAX_CHILDREN * sizeof(int));
+  }
+  // Parse file
   num_nodes = parse_graph_file(filename, nodes);
   if (num_nodes < 0) {
+    cleanUP();
     return EXIT_FAILURE;
   }
   
@@ -371,35 +499,42 @@ int main(int argc, char *argv[]) {
   fprintf(stderr, "Parsing node parents...\n");
   parse_node_parents(nodes, num_nodes);
 
-  // node_t *tempNodes;
-  // tempNodes = nodes;
-
-  // for (int i = 0; i < num_nodes; ++i)
-  // {
-  //   printf("id %d: \n", tempNodes->id);
-  //   for (int j = 0; j < tempNodes->num_parents; ++j)
-  //   {
-  //     printf("%d ", tempNodes->parents[j]);
-  //   }
-  //   printf("\n");
-  //   tempNodes++;
-  // }
-
   /* Print process tree */
   fprintf(stderr, "\nProcess tree:\n");
   print_process_tree(nodes, num_nodes);
 
   /* Run processes */
   fprintf(stderr, "Running processes...\n");
+  num_nodes_finished = parse_node_status(nodes, num_nodes);
 
-  /* INSERT CODE  - invocation to parse_node_status */
-  
-  if (num_nodes_finished < 0) {
-    perror("Error executing processes");
-    return EXIT_FAILURE;
+  topoSort(nodes->id);
+  for (int i = 0; i < num_nodes; ++i)
+  {
+      if (visited[i] == 0)
+      {
+        topoSort(i);
+      }
   }
 
+  printf("%s\n", "Sorted list");
+  for (int i = 0; i < count; ++i)
+  {
+      printf("%d, ", sortedList[i]);
+  }
+
+  // while (num_nodes_finished != num_nodes) {
+  //   num_nodes_finished = parse_node_status(nodes, num_nodes);
+
+  //   if (num_nodes_finished < 0) {
+  //       perror("Error executing processes");
+  //       cleanUP();
+  //       return EXIT_FAILURE;
+  //   }
+  // }
+
   fprintf(stderr, "All processes finished. Exiting.\n");
+
+  cleanUP();
   return EXIT_SUCCESS;
 }
 
