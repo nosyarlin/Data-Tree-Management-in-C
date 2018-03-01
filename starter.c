@@ -347,14 +347,21 @@ int parse_node_status(node_t *nodes, int num_nodes) {
     // Saving all current statuses of nodes
     for (int i = 0; i < num_nodes; ++i)
     {
-        // Check if node is done
-        if (nodes->status == 3)
-        {
-            num_finished++;
+        if(nodes->status >= 0 && nodes->status <=3){
+          // Check if node is done
+          if (nodes->status == 3)
+          {
+              num_finished++;
+          }
+          // Saving statuses
+          statuses[i] = nodes->status;
+          nodes++;        
         }
-        // Saving statuses
-        statuses[i] = nodes->status;
-        nodes++;        
+        else{
+          //return error for unknown status number 
+           perror("Unknown stauts number detected");
+           return -1;
+        }
     } 
 
     // Check if nodes' statuses changed
@@ -438,17 +445,24 @@ int print_process_tree(node_t *nodes, int num_nodes) {
   return 0;
 }
 
-int topoSort(int current_node) {
-    for (int i = 0; i < tempNum_children[current_node]; ++i)
-    {
-        if (visited[children[current_node][i]] == 0)
+int topoSort(int current_node, int num_nodes) {
+
+    if (current_node > num_nodes){
+       perror("Current node number exceeds the total number of nodes");
+       return -1;
+    }else{
+        for (int i = 0; i < tempNum_children[current_node]; ++i)
         {
-            topoSort(children[current_node][i]);
+            if (visited[children[current_node][i]] == 0)
+            {
+                topoSort(children[current_node][i],num_nodes);
+            }
         }
+        sortedList[count] = current_node;
+        visited[current_node] = 1;
+        count++;
     }
-    sortedList[count] = current_node;
-    visited[current_node] = 1;
-    count++;
+   
 }
 
 void cleanUP() {
@@ -507,12 +521,12 @@ int main(int argc, char *argv[]) {
   fprintf(stderr, "Running processes...\n");
   num_nodes_finished = parse_node_status(nodes, num_nodes);
 
-  topoSort(nodes->id);
+  topoSort(nodes->id,num_nodes);
   for (int i = 0; i < num_nodes; ++i)
   {
       if (visited[i] == 0)
       {
-        topoSort(i);
+        topoSort(i,num_nodes);
       }
   }
 
