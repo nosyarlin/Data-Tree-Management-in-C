@@ -4,8 +4,9 @@
 #include<stdlib.h>
 #include<errno.h>
 #include<string.h>
-
+#include<fcntl.h>
 #include<ctype.h>
+#include <sys/wait.h>
 
 #define INELIGIBLE 0
 #define READY 1
@@ -125,7 +126,7 @@ int parse_input_line(char *line, int id, node_t *node) {
   int a;
 
   /* Split the line on ":" delimiters */
-  if (parse_tokens(line, ":", &strings) == -1) {
+  if (parse_tokens(line, ":\r\n", &strings) == -1) {
     perror("Failed to parse node information");
     return -1;
   }
@@ -359,7 +360,7 @@ int parse_node_status(node_t *nodes, int num_nodes) {
         }
         else{
           //return error for unknown status number 
-           perror("Unknown stauts number detected");
+           perror("Unknown status number detected");
            return -1;
         }
     } 
@@ -462,7 +463,6 @@ int topoSort(int current_node, int num_nodes) {
         visited[current_node] = 1;
         count++;
     }
-   
 }
 
 void cleanUP() {
@@ -475,6 +475,104 @@ void cleanUP() {
     free(tempNum_children);
     free(sortedList);
     free(visited);
+}
+
+int exec_command(char *prog, char **args, char *input, char *output){
+    pid_t pid, wpid;
+    int status;
+    int file;
+    pid = fork();   // -1 means forking failed
+                    // 0 means forking success
+                    // + means returned to parent or caller, contains child id
+    if (pid == 0) {
+        // redirect stdin if needed
+        if (strcmp(input, "stdin") != 0)
+        {
+            //First, we're going to open a file
+            file = open(input, O_RDONLY, S_IRUSR | S_IWUSR);
+            if(file < 0)    return -1;
+
+            //Now we redirect standard input to the file using dup2
+            if(dup2(file, STDIN_FILENO) < 0)    return -1;
+        }
+
+        // redirect stdout if needed
+        if (strcmp(output, "stdout") != 0)
+        {
+            //First, we're going to open a file
+            file = open(output, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+            if(file < 0)    return -1;
+
+            //Now we redirect standard output to the file using dup2
+            if(dup2(file, STDOUT_FILENO) < 0)    return -1;
+        }
+
+        // execute child process
+        if (execvp(prog, args) == -1) {
+            perror("execvp error");
+        }
+        exit(EXIT_SUCCESS);
+
+    } else if (pid < 0) { //error forking 
+        perror("fork error");
+
+    } else { // parent process
+        do { // wait for child process to be done before resuming
+            wpid = waitpid(pid, &status, WUNTRACED);
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+        if (file >= 0)
+        {
+            close(file);
+        }
+    }
+    return 1;
+}
+
+int run_processes(node_t *nodes, int num_nodes) {
+    int current;
+    int num_nodes_finished;
+    int status;
+
+    count = num_nodes-1;
+    current = 0;
+
+    // Run through every node in sorted list
+    for (int i = 0; i < num_nodes; ++i)
+    {
+        // Move to correct node
+        while (current != sortedList[count]) {
+            if (sortedList[count] > current)
+            {
+                current++;
+                nodes++;
+            } else {
+                current--;
+                nodes--;
+            }
+        }
+
+        // Start running the node
+        nodes->status = 2;
+        printf("%s%d\n", "running process ", nodes->id);
+        if (exec_command(nodes->prog, nodes->args, nodes->input, nodes->output) < 0)
+        {
+            perror("Error executing processes");
+            return EXIT_FAILURE;
+        }
+        // Change node status to finish, and move down sorted list
+        nodes->status = 3;
+        count--;
+
+        // Update all statuses
+        num_nodes_finished = parse_node_status(nodes, num_nodes);
+        if (num_nodes_finished < 0) {
+            perror("Error executing processes");
+            cleanUP();
+            return EXIT_FAILURE;
+        }
+    }
+    printf("\n");
+    print_process_tree(nodes, num_nodes);
 }
 
 /**
@@ -517,10 +615,7 @@ int main(int argc, char *argv[]) {
   fprintf(stderr, "\nProcess tree:\n");
   print_process_tree(nodes, num_nodes);
 
-  /* Run processes */
-  fprintf(stderr, "Running processes...\n");
-  num_nodes_finished = parse_node_status(nodes, num_nodes);
-
+  // Topologically sorting processes
   topoSort(nodes->id,num_nodes);
   for (int i = 0; i < num_nodes; ++i)
   {
@@ -530,22 +625,18 @@ int main(int argc, char *argv[]) {
       }
   }
 
-  printf("%s\n", "Sorted list");
-  for (int i = 0; i < count; ++i)
+  // Printing out sorted list
+  printf("%s\n", "Sorted list: ");
+  for (int i = 0; i < num_nodes; ++i)
   {
-      printf("%d, ", sortedList[i]);
+      printf("%d ", sortedList[i]);
   }
+  printf("\n\n");
 
-  // while (num_nodes_finished != num_nodes) {
-  //   num_nodes_finished = parse_node_status(nodes, num_nodes);
-
-  //   if (num_nodes_finished < 0) {
-  //       perror("Error executing processes");
-  //       cleanUP();
-  //       return EXIT_FAILURE;
-  //   }
-  // }
-
+  /* Run processes */
+  fprintf(stderr, "Running processes...\n");
+  run_processes(nodes, num_nodes);
+  
   fprintf(stderr, "All processes finished. Exiting.\n");
 
   cleanUP();
