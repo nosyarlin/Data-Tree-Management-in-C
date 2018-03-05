@@ -12,8 +12,12 @@ It analyses this graph to determine which processes are eligible to run, and the
 
 ## Compliation Method
 
-### Setting up through GitHub
-git clone 
+### Setting up
+If you wish to utilise the terminal, go to the folder where you wish to clone the file and paste the following in the terminal
+``` 
+git clone https://github.com/nosyarlin/Data-Tree-Management-in-C.git
+```
+else, press the download zip file button instead. 
 
 ### Running in Ubuntu/Mac Shell
 
