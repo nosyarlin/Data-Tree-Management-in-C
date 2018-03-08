@@ -58,19 +58,29 @@ Each line represents one process node. Within each section delimited by colons, 
 One example of a valid line is as follows
 
 ```
-Sleep 1:1:stdin:stdout
+Sleep 1:1 2 3 4:stdin:stdout
 ```
 
 After parsing the entire text file, the different elements are stored in a process node structure with the following fields:
+
 ```id```: holds the node id of the process
+
 ```prog```: holds the command to be run
+
 ```args```: holds additional arguments for the command
+
 ```num_args```: hold number of arguments this process has
+
 ```input```: holds name of input file, can be stdin
+
 ```output```: holds name of output file, can be stdout
+
 ```parents```: holds an array of parents' IDs
+
 ```num_parents```: holds number of parents this process has
+
 ```children```: holds an array of children's IDs
+
 ```status```: holds the current status of the process, can be INELIGIBLE, READY, RUNNING or FINISHED
 
 First, we go through the entire text file and initialise all the nodes. Since the text file only holds the children of each node, we go through all the nodes once more to update who their parents are. 
