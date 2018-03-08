@@ -36,3 +36,57 @@ Ensure that the dependent files are in the same folder as where you run the comm
 
 ## Program Flow
 
+The program goes through three steps:
+1. Parses the input text file into process nodes
+2. Topologically sorts the process nodes
+3. Run the processes in topological order
+
+### Parsing Input File
+This part is the longest part of the code.
+The text file has to be written in the following format:
+
+```
+program name with arguments:list of children ID's:input file:output file
+```
+
+Each line represents one process node. Within each section delimited by colons, the arguments are further delimited by spaces. i.e. the list of children IDs looks like
+
+```
+1 2 3 4
+```
+
+One example of a valid line is as follows
+
+```
+Sleep 1:1:stdin:stdout
+```
+
+After parsing the entire text file, the different elements are stored in a process node structure with the following fields:
+```id```: holds the node id of the process
+```prog```: holds the command to be run
+```args```: holds additional arguments for the command
+```num_args```: hold number of arguments this process has
+```input```: holds name of input file, can be stdin
+```output```: holds name of output file, can be stdout
+```parents```: holds an array of parents' IDs
+```num_parents```: holds number of parents this process has
+```children```: holds an array of children's IDs
+```status```: holds the current status of the process, can be INELIGIBLE, READY, RUNNING or FINISHED
+
+First, we go through the entire text file and initialise all the nodes. Since the text file only holds the children of each node, we go through all the nodes once more to update who their parents are. 
+
+### Topological Sort
+Sorting the processes ensures a process will only be allowed to run after its parents have all completed their commands. This part is fairly straight forward. 
+
+We keep an array ```visited``` which tells us which node has been visited by our sorting algorithm. ```visited[1] == 1``` would mean process 1 has been visited. 
+
+After which, we start from a random node and recursively go down the graph all visit all of its descendants. Once we have reached the last descendant (a leaf node), we add the node id to the sorted list as we go back up the graph. At each recursion, the ```visited``` array is updated. This is repeated for the remaining unvisited nodes if any. 
+
+### Running All Processes
+Finally, we go down the sorted list and run each process in order. 
+
+For each process, we check what are its input and output. If necessary, we use ```dup2()``` to redirect the process' input and output to the correct files. 
+
+After all necessary redirections have been completed, a process is executed using ```execvp()```
+
+There is no concurrency in this program. As the processes run, their statuses will be printed to stdout
