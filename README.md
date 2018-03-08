@@ -21,16 +21,18 @@ else, press the download zip file button instead.
 
 ### Running in Ubuntu/Mac Shell
 
-
-If you want to just run the file without compling, 
-```
-./raysonisgreat <input_text_file>
-```
-else, 
+To compile the file, 
 ```
 gcc starter.c -o <name>
-./<name> <input_text_file>
 ```
+
+Finally to run it,
+```
+./<name> <graph-file>
+```
+
+
 Ensure that the dependent files are in the same folder as where you run the command. If not, the program will throw an error message saying there is something wrong with the graph.
 
 ## Program Flow
+
