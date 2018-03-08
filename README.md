@@ -10,7 +10,7 @@ This program utilises UNIX system calls such as fork,exec and wait in C to trave
 
 It analyses this graph to determine which processes are eligible to run, and then runs those processes. A process is eligible to run only when all of its parents have completed executing, after which it is forked and executed. Each node can also have its input and output redirected through its definition in the graph file. Additionally, nodes which are runnable can be concurrently executed in their own threads.
 
-## Compliation Method
+## Compilation Method
 
 ### Setting up
 If you wish to utilise the terminal, go to the folder where you wish to clone the file and paste the following in the terminal
