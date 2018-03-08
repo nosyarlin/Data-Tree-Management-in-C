@@ -1,8 +1,0 @@
-hi there
-wazzup
-   7240 outcity.txt
-    124    1506    8420 outParis.txt
-     56     598    3578 outLondon.txt
-  32544  277766 1613756 outentirebook.txt
-  32826  281156 1632994 total
-2826  281156 1632994 total
