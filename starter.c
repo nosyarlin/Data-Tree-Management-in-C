@@ -18,11 +18,11 @@
 #define MAX_CHILDREN 10
 #define MAX_NODES 50
 
-int **children;
-int *tempNum_children;
-int *sortedList;
-int *visited;
-int count = 0;
+int **children;        // children[node_id] holds ids of children of node
+int *tempNum_children; // holds number of children each node has, is set in parse_input_line
+int *sortedList; 	   // holds ids of nodes sorted in topological order
+int *visited;          // visited[node_id] == 1 if the node has been "visited" in the sorting algorithm
+int count = 0;		   // used to denote which position in sortedList we can write into
 
 typedef struct node {
   int id;
@@ -262,6 +262,8 @@ int parse_graph_file(char *file_name, node_t *node) {
 /**
  * Parses the process tree represented by nodes and determines the parent(s)
  * of each node.
+ *
+ * returns 0 if successful
  */
 int parse_node_parents(node_t *nodes, int num_nodes) {
   int **parent_list = (int**) malloc(MAX_NODES * sizeof(int *));
@@ -408,22 +410,30 @@ int parse_node_status(node_t *nodes, int num_nodes) {
  */
 int print_process_tree(node_t *nodes, int num_nodes) {
   char *stat = malloc(10 * sizeof(char));
+
+  // Go through each node
   for (int i = 0; i < num_nodes; ++i)
   {
+  	// Print node's parents
     printf("process %d: \nparents: ", nodes->id);
     for (int j = 0; j < nodes->num_parents; ++j)
     {
       printf("%d, ", nodes->parents[j]); 
     }
+
+    // Print node's children
     printf("\nchildren: ");
     for (int j = 0; j < nodes->num_children; ++j)
     {
       printf("%d, ", nodes->children[j]); 
     }
+
+    // Print node's commands, inputs and outputs
     printf("\ncommand: %s", nodes->prog);
     printf("\ninput: %s", nodes->input);
     printf("\noutput: %s", nodes->output);
 
+    // Print node's state
     switch (nodes->status){
         case 0:
             stat = "INELIGIBLE";
@@ -446,12 +456,25 @@ int print_process_tree(node_t *nodes, int num_nodes) {
   return 0;
 }
 
+/**
+ * Recursively sorts the nodes based on topological order
+ * 
+ * current_node is the id of the node we are visiting now
+ * tempNum_children holds number of children each node has
+ * children holds ids of the children of each node
+ * sortedList holds the sorted node ids
+ * count tells us which position of sortedList to write into
+ * visited tells us which nodes have been visited
+ *
+ * returns 0 if sorting was successful
+ */
 int topoSort(int current_node, int num_nodes) {
 
     if (current_node > num_nodes){
        perror("Current node number exceeds the total number of nodes");
        return -1;
     }else{
+    	// visit all the unvisited children
         for (int i = 0; i < tempNum_children[current_node]; ++i)
         {
             if (visited[children[current_node][i]] == 0)
@@ -459,12 +482,19 @@ int topoSort(int current_node, int num_nodes) {
                 topoSort(children[current_node][i],num_nodes);
             }
         }
+        // add current node to sortedList
         sortedList[count] = current_node;
         visited[current_node] = 1;
         count++;
     }
+    return 0
 }
 
+/**
+ * Frees the memory we have allocated in main
+ * Called when exiting the program
+ * Does not return anything
+ */
 void cleanUP() {
     
     for (int j = 0; j < MAX_CHILDREN; ++j)
@@ -477,6 +507,16 @@ void cleanUP() {
     free(visited);
 }
 
+/**
+ * Runs a process
+ *
+ * prog refers to the command
+ * args are the arguments for the command
+ * input refers to the input file or stdin
+ * output refers to the output file or stdout
+ *
+ * returns 0 if successful
+ */
 int exec_command(char *prog, char **args, char *input, char *output){
     pid_t pid, wpid;
     int status;
@@ -490,10 +530,16 @@ int exec_command(char *prog, char **args, char *input, char *output){
         {
             //First, we're going to open a file
             file = open(input, O_RDONLY, S_IRUSR | S_IWUSR);
-            if(file < 0)    return -1;
+            if(file < 0) {
+            	perror("Error opening input file");
+            	return -1;
+            }
 
             //Now we redirect standard input to the file using dup2
-            if(dup2(file, STDIN_FILENO) < 0)    return -1;
+            if(dup2(file, STDIN_FILENO) < 0) {
+            	perror("Error redirecting input");
+            	return -1;
+            }
         }
 
         // redirect stdout if needed
@@ -501,10 +547,16 @@ int exec_command(char *prog, char **args, char *input, char *output){
         {
             //First, we're going to open a file
             file = open(output, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-            if(file < 0)    return -1;
+            if(file < 0) {
+            	perror("Error opening output file");
+            	return -1;
+            }
 
             //Now we redirect standard output to the file using dup2
-            if(dup2(file, STDOUT_FILENO) < 0)    return -1;
+            if(dup2(file, STDOUT_FILENO) < 0) {
+            	perror("Error redirecting output");
+            	return -1;
+            }
         }
 
         // execute child process
@@ -525,7 +577,7 @@ int exec_command(char *prog, char **args, char *input, char *output){
             close(file);
         }
     }
-    return 1;
+    return 0;
 }
 
 int run_processes(node_t *nodes, int num_nodes) {
